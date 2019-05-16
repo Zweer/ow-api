@@ -23,7 +23,9 @@ class Competitive extends Quickplay {
   rank: number;
   rankImage: string;
 
-  get winRate() { return parseFloat(((this.won / this.played) * 100).toFixed(2)); }
+  get winRate() {
+    return parseFloat(((this.won / this.played) * 100).toFixed(2));
+  }
 }
 
 export class Profile {
