@@ -1,11 +1,24 @@
 {
-  "name": "ow-api",
+  "name": "@zwe/ow-api",
   "version": "0.0.1",
   "description": "An Overwatch (and Overwatch League) APIs",
   "main": "dist/index.js",
+  "files": ["/dist"],
+  "types": "dist/index.d.ts",
   "repository": "https://github.com/Zweer/ow-api.git",
   "author": "Niccolò Olivieri Achille <n.olivieriachille@gmail.com>",
   "license": "MIT",
+  "scripts": {
+    "format": "prettier --write \"src/**/*.ts\"",
+    "lint": "tslint -p tsconfig.json",
+    "test": "jest",
+    "build": "tsc",
+    "prepare": "yarn build",
+    "prepublishOnly" : "yarn test && yarn lint",
+    "preversion" : "yarn lint",
+    "version" : "yarn format && git add -A src",
+    "postversion" : "git push && git push --tags"
+  },
   "dependencies": {
     "axios": "^0.18.0",
     "cheerio": "^1.0.0-rc.3",
@@ -23,6 +36,7 @@
   },
   "jest": {
     "preset": "ts-jest",
+    "roots": ["<rootDir>/src"],
     "testEnvironment": "node"
   }
 }
