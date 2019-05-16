@@ -42,7 +42,7 @@ class Overwatch {
   private readonly baseUrl = 'https://playoverwatch.com/en-us/career';
 
   // Credit to @relaera on https://github.com/Fuyukai/OWAPI/pull/270 for this data.
-  static PRESTIGE_LEVELS = {
+  private static readonly PRESTIGE_LEVELS = {
     '1055f5ae3a84b7bd8afa9fcbd2baaf9a412c63e8fe5411025b3264db12927771': 0,  // Bronze Lv 1
     '69c2c1aff0db8429a980bad7db76a3388003e43f0034097dc4cfa7f13c5de7d7': 0,  // Bronze Lv 11
     '4d63c2aadf536e87c84bdb7157c7b688cffb286e17a5362d2fa5c5281f4fc2a2': 0,  // Bronze Lv 21
@@ -103,7 +103,7 @@ class Overwatch {
     return this.PRESTIGE_LEVELS[hash] || 0;
   }
 
-  static PRESTIGE_STARS = {
+  private static readonly PRESTIGE_STARS = {
     '8de2fe5d938256a5725abe4b3655ee5e9067b7a1f4d5ff637d974eb9c2e4a1ea': 1,  // 1 Bronze star
     '755825d4a6768a22de17b48cfbe66ad85a54310ba5a8f8ab1e9c9a606b389354': 2,  // 2 Bronze stars
     '4a2c852a16043f613b7bfac33c8536dd9f9621a3d567174cb4ad9a80e3b13102': 3,  // 3 Bronze stars
