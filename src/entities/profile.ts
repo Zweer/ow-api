@@ -41,4 +41,5 @@ export class Profile {
   level: number;
 
   isPrivate: boolean;
+  portrait: string;
 }

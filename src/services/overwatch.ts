@@ -1,42 +1,11 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-import * as moment from 'moment';
 import * as path from 'path';
 
 import { Profile } from '../entities/profile';
 import { platform, region } from '../types/overwatch';
-
-type profileRaw = {
-  platform: platform;
-  tag: string;
-  region: region;
-  user: string;
-  level: string;
-  portrait: string;
-  permission: string;
-  endorsementLevel: string;
-  endorsementFrameEl: string;
-  sportsmanshipValue: string;
-  shotcallerValue: string;
-  teammateValue: string;
-  quickplayWonEl: string;
-  quickplayTimePlayedEl: string;
-  compWonEl: string;
-  compPlayedEl: string;
-  compLostEl: string;
-  compDrawEl: string;
-  compTimePlayedEl: string;
-  compRankEl: string;
-  levelFrameEl: string;
-  starEl: string;
-  rankEl: string;
-  compRankImg: string;
-  compRank: string;
-  levelFrame: string;
-  endorsementFrame: string;
-  star: string;
-  rank: string;
-};
+import { statsCategories, topHeroCategories } from '../types/stats';
+import { Stats } from '../entities/stats';
 
 class Overwatch {
   private readonly baseUrl = 'https://playoverwatch.com/en-us/career';
@@ -145,115 +114,133 @@ class Overwatch {
     throw new Error('Invalid tag: it must be something like Foo-123');
   }
 
-  async getProfile(platform: platform, tag: string, region?: region): Promise<Profile> {
+  async getUserInfo(platform: platform, tag: string, region?: region): Promise<{ profile: Profile, stats: Stats }> {
+    this.validateTag(tag);
+
     const $ = await this.request(platform, tag, region);
 
-    const profileRaw = this.parseProfile($, platform, tag, region);
-    const profile = this.formatProfile(profileRaw);
+    const profile = Overwatch.parseProfile($, platform, tag, region);
+    const stats = Overwatch.parseStats($);
 
-    return profile;
+    return { profile, stats };
   }
 
-  private parseProfile($: any, platform: platform, tag: string, region: region): profileRaw {
-    const user = $('.header-masthead').text();
-    const level = $('.player-level div').first().text();
-    const portrait = $('.player-portrait').attr('src');
-    const permission = $('.masthead-permission-level-text').text();
-    const endorsementLevel = $('.masthead .endorsement-level div').last().text();
-    const endorsementFrameEl = $('.masthead .EndorsementIcon').attr('style');
-    const sportsmanshipValue = $('.masthead .EndorsementIcon-border--sportsmanship').data('value');
-    const shotcallerValue = $('.masthead .EndorsementIcon-border--shotcaller').data('value');
-    const teammateValue = $('.masthead .EndorsementIcon-border--teammate').data('value');
-    const quickplayWonEl = $('#quickplay td:contains("Games Won")').next().html();
-    const quickplayTimePlayedEl = $('#quickplay td:contains("Time Played")').next().html();
-    const compWonEl = $('#competitive td:contains("Games Won")').next().html();
-    const compPlayedEl = $('#competitive td:contains("Games Played")').next().html();
-    const compLostEl = $('#competitive td:contains("Games Lost")').next().html();
-    const compDrawEl = $('#competitive td:contains("Games Tied")').next().html();
-    const compTimePlayedEl = $('#competitive td:contains("Time Played")').next().html();
-    const compRankEl = $('.competitive-rank');
-    const levelFrameEl = $('.player-level').attr('style');
-    const starEl = $('.player-rank').attr('style');
-    const rankEl = $('.player-level').attr('style');
-
-    const compRankImg = compRankEl && $('.competitive-rank img').attr('src') || null;
-    const compRank = compRankEl && $('.competitive-rank div').html();
-    const levelFrame = levelFrameEl && levelFrameEl.slice(21, -1).replace(/ /g, '');
-    const endorsementFrame = endorsementFrameEl && endorsementFrameEl.slice(21, -1).replace(/ /g, '');
-    const star = starEl.slice(21, -1).replace(/ /g, '');
-    const rank = star && rankEl.slice(21, -1).replace(/ /g, '');
-
-    return {
-      platform,
-      tag,
-      region,
-      user,
-      level,
-      portrait,
-      permission,
-      endorsementLevel,
-      endorsementFrameEl,
-      sportsmanshipValue,
-      shotcallerValue,
-      teammateValue,
-      quickplayWonEl,
-      quickplayTimePlayedEl,
-      compWonEl,
-      compPlayedEl,
-      compLostEl,
-      compDrawEl,
-      compTimePlayedEl,
-      compRankEl,
-      levelFrameEl,
-      starEl,
-      rankEl,
-      compRankImg,
-      compRank,
-      levelFrame,
-      endorsementFrame,
-      star,
-      rank,
-    };
-  }
-
-  private formatProfile(profileRaw: profileRaw): Profile {
+  private static parseProfile($: any, platform: platform, tag: string, region: region): Profile {
     const profile = new Profile();
 
-    profile.endorsment.sportsmanship = parseFloat(profileRaw.sportsmanshipValue);
-    profile.endorsment.shotcaller = parseFloat(profileRaw.shotcallerValue);
-    profile.endorsment.teammate = parseFloat(profileRaw.teammateValue);
-    profile.endorsment.level = parseInt(profileRaw.endorsementLevel, 10);
-    profile.endorsment.frame = parseFloat(profileRaw.endorsementFrame);
+    profile.username = $('.header-masthead').text();
+    profile.tag = tag;
+    profile.platform = platform;
+    profile.region = region;
+    profile.isPrivate = $('.masthead-permission-level-text').text() === 'Private Profile';
+    profile.portrait = $('.player-portrait').attr('src');
 
-    profile.quickplay.won = profileRaw.quickplayWonEl && parseInt(profileRaw.quickplayWonEl.trim().replace(/,/g, ''), 10) || 0;
-    profile.quickplay.time = profileRaw.quickplayTimePlayedEl && moment.duration(profileRaw.quickplayTimePlayedEl);
+    profile.level = parseInt($('.player-level div').first().text(), 10);
+    const rankStyle = $('.player-rank').attr('style');
+    const rankImg = rankStyle && rankStyle.slice(21, -1).replace(/ /g, '');
+    const levelStyle = $('.player-level').attr('style');
+    const levelImg = levelStyle && levelStyle.slice(21, -1).replace(/ /g, '');
+    if (rankImg && levelImg) {
+      const rankMatch = path.basename(rankImg).split('.').slice(0, -1)[0];
+      const levelMatch = path.basename(levelImg).split('.').slice(0, -1)[0];
 
-    profile.competitive.won = profileRaw.compWonEl && parseInt(profileRaw.compWonEl.trim().replace(/,/g, ''), 10) || 0;
-    profile.competitive.lost = profileRaw.compLostEl && parseInt(profileRaw.compLostEl.trim().replace(/,/g, ''), 10) || 0;
-    profile.competitive.draw = profileRaw.compDrawEl && parseInt(profileRaw.compDrawEl.trim().replace(/,/g, ''), 10) || 0;
-    profile.competitive.played = profileRaw.compPlayedEl && parseInt(profileRaw.compPlayedEl.trim().replace(/,/g, ''), 10) || 0;
-    profile.competitive.time = profileRaw.compTimePlayedEl && moment.duration(profileRaw.compTimePlayedEl);
-    profile.competitive.rank = profileRaw.compRank && parseInt(profileRaw.compRank, 10);
-    profile.competitive.rankImage = profileRaw.compRankImg;
+      const starts = rankMatch ? Overwatch.getPrestigeStars(rankMatch) : 0;
+      const rank = levelMatch ? Overwatch.getPrestigeLevel(levelMatch) : 0;
 
-    profile.username = profileRaw.user;
-    profile.tag = profileRaw.tag;
-    profile.platform = profileRaw.platform;
-    profile.region = profileRaw.region;
+      const prestige = starts + rank;
 
-    profile.level = parseInt(profileRaw.level, 10);
-    if (profileRaw.star && profileRaw.rank) {
-      const starsMatch = path.basename(profileRaw.star).split('.').slice(0, -1)[0];
-      const rankMatch = path.basename(profileRaw.rank).split('.').slice(0, -1)[0];
-      const stars = starsMatch ? Overwatch.getPrestigeStars(starsMatch) : 0;
-      const rank = rankMatch ? Overwatch.getPrestigeLevel(rankMatch) : 0;
-      const prestige = stars + rank;
-      profile.level = profile.level + (prestige * 100);
+      profile.level += (prestige * 100);
     }
 
-    profile.isPrivate = profileRaw.permission === 'Private Profile';
+    profile.endorsment.sportsmanship = parseFloat($('.masthead .EndorsementIcon-border--sportsmanship').data('value'));
+    profile.endorsment.shotcaller = parseFloat($('.masthead .EndorsementIcon-border--shotcaller').data('value'));
+    profile.endorsment.teammate = parseFloat($('.masthead .EndorsementIcon-border--teammate').data('value'));
+    profile.endorsment.level = parseInt($('.masthead .endorsement-level div').last().text(), 10);
+    const endorsementStyle = $('.masthead .EndorsementIcon').attr('style');
+    profile.endorsment.frame = endorsementStyle && endorsementStyle.slice(21, -1).replace(/ /g, '');
+
+    const quickplayWonHtml = $('#quickplay td:contains("Games Won")').next().html();
+    profile.quickplay.won = quickplayWonHtml && parseInt(quickplayWonHtml.trim().replace(/,/g, ''), 10) || 0;
+    profile.quickplay.setTime($('#quickplay td:contains("Time Played")').next().html());
+
+    const competitiveWonHtml = $('#competitive td:contains("Games Won")').next().html();
+    profile.competitive.won = competitiveWonHtml && parseInt(competitiveWonHtml.trim().replace(/,/g, ''), 10) || 0;
+    const competitiveLostHtml = $('#competitive td:contains("Games Lost")').next().html();
+    profile.competitive.lost = competitiveLostHtml && parseInt(competitiveLostHtml.trim().replace(/,/g, ''), 10) || 0;
+    const competitiveDrawHtml = $('#competitive td:contains("Games Tied")').next().html();
+    profile.competitive.draw = competitiveDrawHtml && parseInt(competitiveDrawHtml.trim().replace(/,/g, ''), 10) || 0;
+    const competitivePlayedHtml = $('#competitive td:contains("Games Played")').next().html();
+    profile.competitive.played = competitivePlayedHtml && parseInt(competitivePlayedHtml.trim().replace(/,/g, ''), 10) || 0;
+    profile.competitive.setTime($('#competitive td:contains("Time Played")').next().html());
+    profile.competitive.rank = parseInt($('.competitive-rank div').html(), 10);
+    profile.competitive.rankImage = $('.competitive-rank img').attr('src');
 
     return profile;
+  }
+
+  private static readonly TOP_HERO_CATEGORIES: topHeroCategories = {
+    played: '0x0860000000000021',
+    gamesWon: '0x0860000000000039',
+    winRate: '0x08600000000003D1',
+    weaponAccuracy: '0x086000000000002F',
+    eliminationsPerLife: '0x08600000000003D2',
+    multikillBest: '0x0860000000000346',
+    objectiveKillsAverage: '0x086000000000039C',
+  };
+
+  private static readonly STATS_CATEGORIES: statsCategories = {
+    combat: 'Combat',
+    matchAwards: 'Match Awards',
+    assists: 'Assists',
+    average: 'Average',
+    miscellaneous: 'Miscellaneous',
+    best: 'Best',
+    game: 'Game',
+  };
+
+  private static parseStats($): Stats {
+    const stats = new Stats();
+
+    const gameTypes: (keyof Stats)[] = ['quickplay', 'competitive'];
+
+    gameTypes.forEach((gameType) => {
+      Object.keys(this.TOP_HERO_CATEGORIES).forEach((category) => {
+        const topHeroesElements = $(`#${gameType} [data-category-id="${this.TOP_HERO_CATEGORIES[category]}"]`)
+          .find('.progress-category-item');
+
+        if (topHeroesElements.length > 0) {
+          stats[gameType].topHeroes[category] = [];
+
+          topHeroesElements.each((index, element) => {
+            const $element = $(element);
+
+            stats[gameType].topHeroes[category].push({
+              hero: $element.find('.ProgressBar-title').text(),
+              image: $element.find('.ProgressBar-thumb').attr('src'),
+              [category]: $element.find('.ProgressBar-description').text(),
+            });
+          });
+        }
+      });
+
+      Object.keys(this.STATS_CATEGORIES).forEach((category) => {
+        const categoryElements = $(`#${gameType} [data-category-id="0x02E00000FFFFFFFF"] h5:contains("${this.STATS_CATEGORIES[category]}")`)
+          .closest('table').find('tbody tr');
+
+        stats[gameType].categories[category] = [];
+
+        categoryElements.each((index, element) => {
+          const $element = $(element);
+
+          stats[gameType].categories[category].push({
+            title: $element.find('td').first().text(),
+            value: $element.find('td').next().text(),
+          });
+        });
+      });
+    });
+
+    return stats;
   }
 
   private async request(platform: platform, tag: string, region?: region) {
