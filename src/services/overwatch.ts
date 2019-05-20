@@ -68,7 +68,7 @@ class Overwatch {
     '9e8600f97ea4a84d822d8b336f2b1dbfe7372fb9f2b6bf1d0336193567f6f943': 24,  // Diamond Lv 91 / Max
   };
 
-  static getPrestigeLevel(hash: string): number {
+  private static getPrestigeLevel(hash: string): number {
     return this.PRESTIGE_LEVELS[hash] || 0;
   }
 
@@ -98,7 +98,7 @@ class Overwatch {
     cd877430ccc400c10e24507dba972e24a4543edc05628045300f1349cf003f3a: 5,  // 5 Diamond stars
   };
 
-  static getPrestigeStars(hash: string): number {
+  private static getPrestigeStars(hash: string): number {
     return this.PRESTIGE_STARS[hash] || 0;
   }
 
@@ -106,7 +106,7 @@ class Overwatch {
     return `${this.baseUrl}/${platform}/${platform === 'pc' ? `${region}/` : ''}${tag}`;
   }
 
-  private validateTag(tag: string): boolean {
+  private static validateTag(tag: string): boolean {
     if (tag.match(/(\w+)-(\d+)/)) {
       return true;
     }
@@ -115,7 +115,7 @@ class Overwatch {
   }
 
   async getUserInfo(platform: platform, tag: string, region?: region): Promise<{ profile: Profile, stats: Stats }> {
-    this.validateTag(tag);
+    Overwatch.validateTag(tag);
 
     const $ = await this.request(platform, tag, region);
 
@@ -152,12 +152,12 @@ class Overwatch {
       profile.level += (prestige * 100);
     }
 
-    profile.endorsment.sportsmanship = parseFloat($('.masthead .EndorsementIcon-border--sportsmanship').data('value'));
-    profile.endorsment.shotcaller = parseFloat($('.masthead .EndorsementIcon-border--shotcaller').data('value'));
-    profile.endorsment.teammate = parseFloat($('.masthead .EndorsementIcon-border--teammate').data('value'));
-    profile.endorsment.level = parseInt($('.masthead .endorsement-level div').last().text(), 10);
+    profile.endorsement.sportsmanship = parseFloat($('.masthead .EndorsementIcon-border--sportsmanship').data('value'));
+    profile.endorsement.shotcaller = parseFloat($('.masthead .EndorsementIcon-border--shotcaller').data('value'));
+    profile.endorsement.teammate = parseFloat($('.masthead .EndorsementIcon-border--teammate').data('value'));
+    profile.endorsement.level = parseInt($('.masthead .endorsement-level div').last().text(), 10);
     const endorsementStyle = $('.masthead .EndorsementIcon').attr('style');
-    profile.endorsment.frame = endorsementStyle && endorsementStyle.slice(21, -1).replace(/ /g, '');
+    profile.endorsement.frame = endorsementStyle && endorsementStyle.slice(21, -1).replace(/ /g, '');
 
     const quickplayWonHtml = $('#quickplay td:contains("Games Won")').next().html();
     profile.quickplay.won = quickplayWonHtml && parseInt(quickplayWonHtml.trim().replace(/,/g, ''), 10) || 0;

@@ -1,6 +1,6 @@
 import * as moment from 'moment';
 
-export type endorsment = {
+export type endorsement = {
   sportsmanship: number;
   shotcaller: number;
   teammate: number;

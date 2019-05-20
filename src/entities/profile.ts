@@ -1,7 +1,7 @@
 import * as moment from 'moment';
 
 import { platform, region } from '../types/overwatch';
-import { endorsment } from '../types/profile';
+import { endorsement } from '../types/profile';
 
 class Quickplay {
   won: number;
@@ -29,7 +29,7 @@ class Competitive extends Quickplay {
 }
 
 export class Profile {
-  endorsment: endorsment = {} as endorsment;
+  endorsement: endorsement = {} as endorsement;
 
   quickplay: Quickplay = new Quickplay();
   competitive: Competitive = new Competitive();
